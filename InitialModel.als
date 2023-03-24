@@ -18,13 +18,10 @@ var sig Werewolf extends Player {
 
 fact round {
 	{
-		all ww: Werewolf, player: Player {
-			ww.kill_vote = player implies player.status = Alive
-		}
-		
-		// All werewolves vote for the same player
+		// All werewolves vote for the same, alive, player
 		one victim: Player | all ww: Werewolf {
 			ww.kill_vote = victim
+			victim.status = Alive
 		}
 	} until game_end[]
 }
