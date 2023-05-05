@@ -3,29 +3,34 @@ enum Status {
 	Dead
 }
 one var sig Narrator {
-	var lynched: set Villager,
+	var executed: set Villager,
+	var werewolf_kill: set Villager
 }{
 	all villager: Villager {
-		lynched_this_round[villager] iff villager in lynched
+		executed_this_round[villager] iff villager in executed
+	}
+
+	all villager: Villager, ww: Werewolf {
+		villager in werewolf_kill iff ww.kill_vote = villager
 	}
 }
 
 some var sig Villager {
 	var status: Status,
-	var lynch_vote: lone Villager,
+	var execute_vote: lone Villager,
 	var threats: set Villager,
-	var lynch_votes: Int
+	var execute_votes: Int
 }{
 	(game_end[] or status = Dead or killed_this_round[this]) implies{
-		no lynch_vote 
+		no execute_vote 
 		no threats
-	} else one lynch_vote
+	} else one execute_vote
 	
-	this not in lynch_vote
+	this not in execute_vote
 
 	dead_next_round[this] implies status' = Dead else status' = Alive
 
-	lynch_votes = #threats
+	execute_votes = #threats
 }
 
 var sig Werewolf extends Villager {
@@ -47,11 +52,11 @@ fact round {
 			victim.status = Alive
 		}
 		
-		// Lynch vote bi-implicatoin, needed to count votes. All lynch votes must be for living villagers.
+		// execute vote bi-implicatoin, needed to count votes. All execute votes must be for living villagers.
 		all voter, threatened: Villager {
-			voter in threatened.threats iff threatened in voter.lynch_vote
-			voter.lynch_vote = threatened implies not killed_this_round[threatened]
-			voter.lynch_vote = threatened implies threatened.status = Alive
+			voter in threatened.threats iff threatened in voter.execute_vote
+			voter.execute_vote = threatened implies not killed_this_round[threatened]
+			voter.execute_vote = threatened implies threatened.status = Alive
 		}
 	} until game_end[]
 }
@@ -60,7 +65,7 @@ pred dead_next_round[villager: Villager] {
 	// Villagers are dead next round if they're already dead, or have been killed this round
 	villager.status = Dead or
 	killed_this_round[villager] or
-	lynched_this_round[villager]
+	executed_this_round[villager]
 }
 
 pred killed_this_round[villager: Villager] {
@@ -70,10 +75,10 @@ pred killed_this_round[villager: Villager] {
 	}
 }
 
-pred lynched_this_round[villager: Villager] {
-	// No other Villager recieved more lynch votes than them
+pred executed_this_round[villager: Villager] {
+	// No other Villager recieved more execute votes than them
 	all other_villager : Villager - villager {
-		villager.lynch_votes > other_villager.lynch_votes
+		villager.execute_votes > other_villager.execute_votes
 	}
 }
 
@@ -110,11 +115,11 @@ pred close_game[] {
 	eventually some ww: Werewolf |
 		ww.status = Dead
 
-	// Some werewolves are lynched
-	eventually some ww: Werewolf | lynched_this_round[ww]
+	// Some werewolves are executed
+	eventually some ww: Werewolf | executed_this_round[ww]
 
-	// Some villagers are lynched
-	eventually some villager: Villager | lynched_this_round[villager]
+	// Some villagers are executed
+	eventually some villager: Villager | executed_this_round[villager]
 }
 
 //fun still_alive[] : set Villager {{villager: Villager | villager.status = Alive}}
@@ -123,4 +128,4 @@ run show{
 	init[]
 	eventually werewolf_win[]
 	close_game[]
-} for 15 but 5 Int, 1..8 steps
+} for 18 but 10 Int, 1..10 steps
